@@ -5,11 +5,16 @@ from pymongo import MongoClient
 con = sqlite3.connect("mxm_dataset.db")
 cur = con.cursor()
 print("Successfully connected to database")
-# Get all the tracks that may match sa lyrics and genres
+# Get all the tracks that may match genres
 # tracks, genres, lyrics
 # Year, id, artist, title, id, genre, id, word, how many times, weird thing
 # Returns 436436 songs
-cur.execute("SELECT * from tracks JOIN genres ON tracks.track_id=genres.track_id") 
+#cur.execute("SELECT * from tracks JOIN genres ON tracks.track_id=genres.track_id") 
+cur.execute("SELECT * from (SELECT * FROM tracks t JOIN genres g ON t.track_id=g.track_id) as t1 JOIN (SELECT cur.track_id, cur.word, cur.count FROM lyrics cur WHERE NOT EXISTS( SELECT * FROM lyrics high WHERE high.track_id=cur.track_id and high.count > cur.count)) as t2 ON t2.track_id=t1.track_id") 
+
+
+#Get all tracks that match genres and lyrics
+cur.execute("SELECT * from tracks JOIN genres ON tracks.track_id=genres.track_id JOIN lyrics ON tracks.track_id=lyrics.track_id") 
 
 results = cur.fetchall()
 
