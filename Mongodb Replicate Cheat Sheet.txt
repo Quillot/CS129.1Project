@@ -1,0 +1,53 @@
+// Set up folder
+
+mkdir replicates
+cd replicates
+mkdir server1
+mkdir server2
+mkdir server3
+
+// open new terminal in the replicates folder
+mongod --replSet replicate --dbpath server1 --port 27020 --rest
+
+// open another new terminal in the replicates folder 
+mongod --replSet replicate --dbpath server2 --port 27021 --rest
+
+// open another new terminal in the replicates folder
+mongod --replSet replicate --dbpath server3 --port 27022 --rest
+
+// Login to a mongo instance
+mongo localhost:27020
+
+// copy paste in the terminal
+var cfg = {
+	"_id": "replicate",
+	"version" : 1,
+	"members" :   [
+		{
+			"_id" : 0,
+			"host" : "localhost:27020",
+			"priority" : 1
+		},
+		{
+			"_id" : 1,
+			"host" : "localhost:27021",
+			"priority" : 0
+		},
+		{
+			"_id" : 2,
+			"host" : "localhost:27022",
+			"priority" : 0
+		}
+	]
+}
+
+// To exit the database:
+exit 
+
+// To login to the secondary mongo, type:
+mongo localhost:27021 
+use replicate
+rs.slaveOk()
+db.test.find()
+
+
