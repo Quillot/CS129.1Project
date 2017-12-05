@@ -1,18 +1,110 @@
-### Instructions
+### Creating the database
 
-1. Open your mongodb server, make sure to listen on 27107 (default). 
+The database source is made with SQLite3. With Python 3, the group created SQL queries and parsed the output into JSON for input into MongoDB. 
 
-2. Make a db named `test_db`.
+1. Download the source database from [the million song database](http://labrosa.ee.columbia.edu/millionsong/sites/default/files/AdditionalFiles/mxm_dataset.db)
 
-3. Run `getRows.py`. It will output lyrics.json, tracks.json, and write all the tracks to test_db, under the collection `songs`. `Songs` should contain 436436 entries.
+2. Run `parseDB.py`. It will output tracks.json, which contains all the tracks with lyrics and genres. Python connects to the SQLite DB, and uses the query:
 
-4. Run `parseLyrics.py`. It will remove all the duplicate track lyrics from lyrics.json (Although this means that those with duplicates will not be included in the final db). This will output lyricsParsed.json.
+>SELECT * from (SELECT * FROM tracks t JOIN genres g ON t.track_id=g.track_id) as t1 JOIN (SELECT cur.track_id, cur.word, cur.count FROM lyrics cur WHERE NOT EXISTS( SELECT * FROM lyrics high WHERE high.track_id=cur.track_id and high.count > cur.count)) as t2 ON t2.track_id=t1.track_id
 
-5. Run `getLyrics.py` It will open lyricsParsed.json and write it to test_db, under the collection `lyrics`. `Lyrics` should contain 230084 entries.
+to join 1) the highest count word per song and 2) the songs with valid genres (as some songs don't have genres).
 
-### Notes
+### Creating the Mongo Replication Database
 
-For reference, check importCode.txt. 
+1. Setting up the folder
+	Create a directory name replicates
+		`mkdir replicates`
+	Change the current directory to replicates
+		`cd replicates`
+	Create three folders inside replicates named server1, server2, and server3
+		`mkdir server1`
+		`mkdir server2`
+		`mkdir server3`
+  
+2. Running the servers
+	Open a new terminal in the replicates folder
+		`mongod --replSet replicate --dbpath server1 --port 27020 --rest`
+	Open another new terminal in the replicates folder 
+		`mongod --replSet replicate --dbpath server2 --port 27021 --rest`
+	Open another new terminal in the replicates folder
+		`mongod --replSet replicate --dbpath server3 --port 27022 --rest`
+
+3. Login to a mongo instance
+	mongo localhost:27020
+
+4. Create a cfg file in the terminal
+
+> 
+  var cfg = {
+    "_id": "replicate",
+    "version" : 1,
+    "members" :   [
+      {
+        "_id" : 0,
+        "host" : "localhost:27020",
+        "priority" : 1
+      },
+      {
+        "_id" : 1,
+        "host" : "localhost:27021",
+        "priority" : 0
+      },
+      {
+        "_id" : 2,
+        "host" : "localhost:27022",
+        "priority" : 0
+      }
+    ]   } 	rs.initialize(cfg)
+
+  
+5. Upload the database into the server
+ 	Run a new terminal in the folder of the json file to be uploaded. Use the tracks.json generated during the `Creating the Database` section
+ 		`mongoimport --db <dbname> --collection <collection name> --type json --file <filename.json> -h localhost:27020`
+
+6. Check if the files are uploaded
+	Go back to the terminal of the server
+  Show the current databases
+  	`show dbs`
+  Use the uploaded database
+  	`use <dbname>`
+  Check the collection if the data is uploaded
+  	`db.<collection name>.find()`
+
+7. Changing the database
+	Open a new terminal and login to another port
+		`mongo localhost:27021` 
+  Once login set the current terminal as a slave
+  	`rs.slave.Ok()`
+  Then use the uploaded database
+  	`use <dbname>`
+	Check the database if the same data is uploaded
+		`db.<collection name>.find()`
+    
+### Creating and using MapReduce
+
+1. Assuming your mongo server is set up and the data has been imported, open the contents of 'MapReduce.js'
+
+2. Copy the contents into the mongo server. This will create the new reduced collections.
+
+3. To know if the MapReduce worked, the response on mongo should follow the similar convention:
+
+
+      >{
+              "result" : "record.answer4",
+              "timeMillis" : 5312,
+              "counts" : {
+    	              "input" : 189481,
+                      "emit" : 189481,
+                      "reduce" : 30897,
+                      "output" : 23738
+              },
+              "ok" : 1
+      }
+
+4. To use the collections, type `db.nameOfMapReduce.find()` as if you were finding a normal collection.
+
+## Additional Notes
 
 ### Making queries for sqlite3
 
@@ -27,8 +119,6 @@ cur.execute("<QUERY HERE>")
 cur.fetchall()
 ```
 
-3. Refer to importCode for sample queries
-
 ### Exporting and importing json into mongodb
 
 After running the python programs, the data will be input into mongodb. This data can be output into JSON for sharing with other systems.
@@ -38,3 +128,8 @@ After running the python programs, the data will be input into mongodb. This dat
 2. To input json, run in your cmd `mongoimport --db test_db --collections <collectionname> --type json --file <filename>.json`
 
 3. Don't forget to use CMD in the same folder as the JSON you're importing/exporting
+
+
+
+
+
