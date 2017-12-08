@@ -1,16 +1,20 @@
-### Creating the database
+### Loading the dataset
 
-The database source is made with SQLite3. With Python 3, the group created SQL queries and parsed the output into JSON for input into MongoDB. 
+The lyrics database source is made with SQLite3, while the sources of the track metadata, which include the release years, and genres are separate .csv files. With Python 3, the group created new tables in the SQLite DB for the tracks and genres, then inserted data from the .csv files into the track and genre tables, respectively. The group then created SQL queries to get all the tracks with matching genres and lyrics, then parsed the output into JSON for input into MongoDB.  
 
 1. Download the source database from [the million song database](http://labrosa.ee.columbia.edu/millionsong/sites/default/files/AdditionalFiles/mxm_dataset.db)
 
-2. Run `parseDB.py`. It will output tracks.json, which contains all the tracks with lyrics and genres. Python connects to the SQLite DB, and uses the query:
+2. Run `createTracksTable.py`. It creates a table named *tracks* in the SQLite DB, then inserts data from `tracks.csv` into this table.
+
+3. Run `createGenresTable.py`. It creates a table named *genres* in the SQLite DB, then inserts data from `genres.csv` into this table.
+
+4. Run `parseDB.py`. It will output tracks.json, which contains all the tracks with lyrics and genres. Python connects to the SQLite DB, and uses the query:
 
 >SELECT * from (SELECT * FROM tracks t JOIN genres g ON t.track_id=g.track_id) as t1 JOIN (SELECT cur.track_id, cur.word, cur.count FROM lyrics cur WHERE NOT EXISTS( SELECT * FROM lyrics high WHERE high.track_id=cur.track_id and high.count > cur.count)) as t2 ON t2.track_id=t1.track_id
 
 to join 1) the highest count word per song and 2) the songs with valid genres (as some songs don't have genres).
 
-### Creating the Mongo Replication Database
+### Setting up the replicate sets
 
 1. Setting up the folder
 	Create a directory name replicates
@@ -34,9 +38,7 @@ to join 1) the highest count word per song and 2) the songs with valid genres (a
 	mongo localhost:27020
 
 4. Create a cfg file in the terminal
-
-> 
-  var cfg = {
+> var cfg = {
     "_id": "replicate",
     "version" : 1,
     "members" :   [
@@ -57,7 +59,6 @@ to join 1) the highest count word per song and 2) the songs with valid genres (a
       }
     ]   } 	rs.initialize(cfg)
 
-  
 5. Upload the database into the server
  	Run a new terminal in the folder of the json file to be uploaded. Use the tracks.json generated during the `Creating the Database` section
  		`mongoimport --db <dbname> --collection <collection name> --type json --file <filename.json> -h localhost:27020`
@@ -80,6 +81,29 @@ to join 1) the highest count word per song and 2) the songs with valid genres (a
   	`use <dbname>`
 	Check the database if the same data is uploaded
 		`db.<collection name>.find()`
+		
+### Executing the MapReduce functions
+
+1. Set-up and login into your mongos server
+
+2. Assuming your mongos server is set up and the data has been imported, open the contents of 'MapReduce.js'
+
+3. Copy the contents into the mongos server terminal. This will create the new reduced collections.
+
+4. To know if the MapReduce worked, the response on mongo should follow the similar convention (assuming the name of the collection is *songs*):
+      > {
+              "result" : "songs.answer4",
+              "timeMillis" : 5312,
+              "counts" : {
+    	              "input" : 189481,
+                      "emit" : 189481,
+                      "reduce" : 30897,
+                      "output" : 23738
+              },
+              "ok" : 1
+      }
+
+5. To use the collections, type `db.nameOfMapReduce.find()` as if you were finding a normal collection.
 
 ### Sharding the MapReduce collection
 
@@ -124,33 +148,9 @@ to join 1) the highest count word per song and 2) the songs with valid genres (a
 5. Importing the data to the mongos server
 	`mongoimport --db <dbname> --collection <collection name> --type json --file <filename.json> --h localhost:27023`
 
-### Creating and using MapReduce
+## Additional notes
 
-1. Set-up and login into your mongos server
-
-2. Assuming your mongos server is set up and the data has been imported, open the contents of 'MapReduce.js'
-
-3. Copy the contents into the mongos server terminal. This will create the new reduced collections.
-
-4. To know if the MapReduce worked, the response on mongo should follow the similar convention:
-
-
-      >{
-              "result" : "record.answer4",
-              "timeMillis" : 5312,
-              "counts" : {
-    	              "input" : 189481,
-                      "emit" : 189481,
-                      "reduce" : 30897,
-                      "output" : 23738
-              },
-              "ok" : 1
-      }
-
-5. To use the collections, type `db.nameOfMapReduce.find()` as if you were finding a normal collection.
-## Additional Notes
-
-### Making queries for sqlite3
+### Making queries for SQLite3
 
 1. Open cmd, and type `python` to open the python shell.
 
@@ -163,12 +163,12 @@ cur.execute("<QUERY HERE>")
 cur.fetchall()
 ```
 
-### Exporting and importing json into mongodb
+### Exporting and importing json into mongoDB
 
 After running the python programs, the data will be input into mongodb. This data can be output into JSON for sharing with other systems.
 
-1. To output, run in your cmd `mongoexport -d <databasename> -c <collectionname> -o <outputname>.json`. In our case, `mongoexport -d test_db -c songs -o tracksOut.json` and `mongoexport -d test_db -c lyrics -o lyricsOut.json`
+1. To output, run in your cmd `mongoexport -d <databasename> -c <collectionname> -o <outputname>.json`.
 
-2. To input json, run in your cmd `mongoimport --db test_db --collections <collectionname> --type json --file <filename>.json`
+2. To input json, run in your cmd `mongoimport --db test_db --collections <collectionname> --type json --file <filename>.json`.
 
-3. Don't forget to use CMD in the same folder as the JSON you're importing/exporting
+3. Don't forget to use CMD in the same folder as the JSON you're importing/exporting.
