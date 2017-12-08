@@ -80,6 +80,49 @@ to join 1) the highest count word per song and 2) the songs with valid genres (a
   	`use <dbname>`
 	Check the database if the same data is uploaded
 		`db.<collection name>.find()`
+		
+### Creating the Mongo Replication Database
+
+1. Setting up the folders
+  	Set-up the project folder.
+		`mkdir sharding`
+	Change the current directory to sharding
+	Create four folders in the mongos diectory
+   		`mkdir config`
+	   	`mkdir shard1`
+	   	`mkdir shard2`
+	   	`mkdir mongos`
+
+2. Setting up the servers
+	Open a terminal within the the sharding folder.
+	Set up the config server
+		`mongod --configsvr --replSet shard --dbpath config --port 27020`
+	Set up the shards
+		Open a terminal and setup shard 1
+			`mongod --shardsvr --dbpath shard1 --port 27021`
+		Open another terminal and setup shard2
+			`mongod --shardsvr --dbpath shard2 --port 27022`
+
+3. Setting up the sharding configuration
+	Connect to the config server
+		`mongod localhost:27020`
+	Initiate the replicate set config
+		`rs.initiate()`
+		
+4. Setting up the mongos server
+	Set up the mongos folder
+		`mongos --configdb shard/localhost:27020 --port 27023`
+	Connect to the mongos server
+		`mongo localhost:27023`
+	Configure the defaul chunkSize
+		`use config`
+		`db.settings.save({_id:"chunkSize",value: 1})`
+	Add the shards
+		`sh.addShard("localhost:27021")`
+		`sh.addShard("localhost:27022")`
+
+5. Importing the data to the mongos server
+	`mongoimport --db <dbname> --collection <collection name> --type json --file <filename.json> --h localhost:27023`
     
 ### Creating and using MapReduce
 
@@ -128,8 +171,3 @@ After running the python programs, the data will be input into mongodb. This dat
 2. To input json, run in your cmd `mongoimport --db test_db --collections <collectionname> --type json --file <filename>.json`
 
 3. Don't forget to use CMD in the same folder as the JSON you're importing/exporting
-
-
-
-
-
