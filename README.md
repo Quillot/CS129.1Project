@@ -126,7 +126,7 @@ to join 1) the highest count word per song and 2) the songs with valid genres (a
 
 ### Creating and using MapReduce
 
-1. Set-up your mongos server
+1. Set-up and login into your mongos server
 
 2. Assuming your mongos server is set up and the data has been imported, open the contents of 'MapReduce.js'
 
