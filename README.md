@@ -80,8 +80,31 @@ to join 1) the highest count word per song and 2) the songs with valid genres (a
   	`use <dbname>`
 	Check the database if the same data is uploaded
 		`db.<collection name>.find()`
-		
-### Creating the Mongo Replication Database
+    
+### Creating and using MapReduce
+
+1. Assuming your mongo server is set up and the data has been imported, open the contents of 'MapReduce.js'
+
+2. Copy the contents into the mongo server. This will create the new reduced collections.
+
+3. To know if the MapReduce worked, the response on mongo should follow the similar convention:
+
+
+      >{
+              "result" : "record.answer4",
+              "timeMillis" : 5312,
+              "counts" : {
+    	              "input" : 189481,
+                      "emit" : 189481,
+                      "reduce" : 30897,
+                      "output" : 23738
+              },
+              "ok" : 1
+      }
+
+4. To use the collections, type `db.nameOfMapReduce.find()` as if you were finding a normal collection.
+
+### Sharding the MapReduce collection
 
 1. Setting up the folders
   	Set-up the project folder.
@@ -123,29 +146,6 @@ to join 1) the highest count word per song and 2) the songs with valid genres (a
 
 5. Importing the data to the mongos server
 	`mongoimport --db <dbname> --collection <collection name> --type json --file <filename.json> --h localhost:27023`
-    
-### Creating and using MapReduce
-
-1. Assuming your mongo server is set up and the data has been imported, open the contents of 'MapReduce.js'
-
-2. Copy the contents into the mongo server. This will create the new reduced collections.
-
-3. To know if the MapReduce worked, the response on mongo should follow the similar convention:
-
-
-      >{
-              "result" : "record.answer4",
-              "timeMillis" : 5312,
-              "counts" : {
-    	              "input" : 189481,
-                      "emit" : 189481,
-                      "reduce" : 30897,
-                      "output" : 23738
-              },
-              "ok" : 1
-      }
-
-4. To use the collections, type `db.nameOfMapReduce.find()` as if you were finding a normal collection.
 
 ## Additional Notes
 
